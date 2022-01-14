@@ -6,10 +6,9 @@
 
 import UIKit
 
-class ProductPageViewController: UIViewController, LayoutSwitchable {
+class ProductGRIDPageViewController: UIViewController, LayoutSwitchable {
     
     @IBOutlet var collectionView: UICollectionView!
-    @IBOutlet var segmentedControl: UISegmentedControl!
     @IBOutlet weak var loadIndicatorView: UIActivityIndicatorView!
     
     var dataSource: UICollectionViewDiffableDataSource<Int, Product>?
@@ -29,7 +28,10 @@ class ProductPageViewController: UIViewController, LayoutSwitchable {
     var isGridLayout: Bool = true
     
     override func viewDidLoad() {
+        
+        
         super.viewDidLoad()
+        
         collectionView.setCollectionViewLayout(createLayout(), animated: false)
         collectionView.isSpringLoaded = true
         collectionView.delegate = self
@@ -41,7 +43,7 @@ class ProductPageViewController: UIViewController, LayoutSwitchable {
         refControl.translatesAutoresizingMaskIntoConstraints = false
         configureDatasource()
         fetchPage()
-        segmentedControl.selectedSegmentIndex = 1
+        
         loadIndicatorView.stopAnimating()
     }
     
@@ -82,7 +84,7 @@ class ProductPageViewController: UIViewController, LayoutSwitchable {
     
 }
 
-extension ProductPageViewController: UICollectionViewDelegate {
+extension ProductGRIDPageViewController: UICollectionViewDelegate {
     
     func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
         let endPoint = CGPoint(x: 0, y: scrollView.contentSize.height)
@@ -96,7 +98,7 @@ extension ProductPageViewController: UICollectionViewDelegate {
     
 }
 
-extension ProductPageViewController {
+extension ProductGRIDPageViewController {
     private func createLayout() -> UICollectionViewLayout {
         let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.5),
                                               heightDimension: .fractionalHeight(1.0))
