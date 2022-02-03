@@ -192,3 +192,134 @@
 
 ---
 
+## 🏆 Process
+
+### [Step 1️⃣] 모델/네트워킹 타입 구현
+
+#### Keyword
+
+- URLSession을 활용한 서버와의 통신
+- JSON 데이터와 맵핑할 모델 설계
+- CodingKeys 프로토콜을 활용한 JSON Serialization
+- 네트워크 상황과 무관한 TDD & UnitTest 설계
+
+#### 고민 했던 부분
+
+- OpenMarketService의 역할
+
+  - 서버 API 문서를 기준으로 7개의 기능을 사용성을 고려하려 추상화합니다.
+  - API가 요구하는 형식에 적합한 URLRequest를 만들어 줍니다.
+  - 열거형의 연관값으로 필수 인자를 받아서 request를 생성해줍니다.
+  - 개발자는 열거형 타입을 통해 호출 가능한 목록을 손쉽게 얻을 수 있습니다.
+
+  ```swift
+  enum OpenMarketService {
+      case checkHealth
+      case createProduct(sellerID: String, params: Data, images: [Data])
+      case updateProduct(sellerID: String, productID: Int, body: Data)
+      case showProductSecret(sellerID: String, sellerPW: String, productID: Int)
+      case deleteProduct(sellerID: String, productID: Int, productSecret: String)
+      case showProductDetail(productID: Int)
+      case showProductPage(pageNumber: Int, itemsPerPage: Int)
+  }
+  ```
+
+- URLSessionProvider 타입을 만들게된 배경
+
+  - HTTP에 기반한 통신 과정에서 서버에 요청하고 응답을 받는 과정을 추상화합니다.
+  - 서버에서 응답을 받을 때 completionHandler로 통신결과에 따른 세부 동작을 구현합니다.
+  - 네트워크가 없는 상황에서 테스트할 수 있도록 Mock과 Server에 대한 구현체를 주입합니다.
+  - 의존성 주입을 위해 필요한 동작을 URLSessionProtocol을 통해 추상화 시켰습니다.
+
+  ```swift
+  sutURLSesssionProvider.request(.showProductPage(pageNumber: 1, itemsPerPage: 10)) { result in
+      switch result {
+      case .success(let data):
+          print("통신에 성공했을때 동작을 여기에 구현합니다!")
+      case .failure(let error):
+          print("통신에 실패했을때 동작을 여기에 구현합니다!")
+      }
+  }
+  ```
+
+* HTTP 메서드에 따른 범용적 사용을 위한 URLRequest 추상화
+
+  * 첫 설계에서는 **HTTP메서드 기준**으로 `중간 단계 추상 타입`을 구현하였습니다.
+  * **Body Content Type**에서의 중복 구현이 발생하는 문제점이 발생하였습니다.
+  * 따라서 **Content Type**을 기준으로 분류하여 추상화 하는 방식을 선택하였습니다.
+  * 실제 서비스에서는 HOST API 주소가 다양할 수 있다는 점을 고려하여 별도의 서비스 프로토콜로 분리 구현하였습니다.
+  * 네트워크 계층을 설계하면서 프로토콜 지향 프로그래밍을 도입하여 프로토콜 기본 구현을 적극 사용하였습니다.
+
+  ```swift
+  protocol OpenMarketInfoOwner {
+      var baseURL: String { get }
+  }
+  protocol OpenMarketAPIRequest: APIRequest, OpenMarketInfoOwner { }
+  protocol OpenMarketJSONRequest: JSONRequest, OpenMarketInfoOwner { }
+  protocol OpenMarketMultiPartRequest: MultiPartRequest, OpenMarketInfoOwner { }
+  ```
+
+  * 프로토콜을 채택한 타입을 API 명세처럼 활용하는 사용성을 고려하여 설계하였습니다.
+
+  ```swift
+  struct ShowProductDetailRequest: OpenMarketAPIRequest {
+      
+      var method: HTTPMethod
+      var header: [String : String]?
+      var path: String
+      
+      init(productID: String) {
+          self.method = .GET
+          self.header = nil
+          self.path = "/api/products/\(productID)"
+      }
+      
+  }
+  ```
+
+* 앱 모델과 API 서버 모델을 분리하여 구현하였습니다.
+
+  - 앱 모델은 서버 API의 Request 혹은 Response 타입에서 공통적인 요소를 추상화하여 Entity 타입으로 구현하였습니다.
+  - 예를 들어 Model 폴더의 Page, Product, ProductImage, Vendor, Currency가 존재합니다.
+  - 서버모델(API 요청, 응답 타입)은 Network 폴더의 API 모델 폴더에 구현하였습니다.
+  - 서버 모델이 앱 모델과 동일하다면 앱 모델과 typealias 를 통해 연동해주었습니다.
+  - 서버 모델이 앱모델과 다르다면 요청, 응답 타입을 정의해주었습니다.
+  - 이를 통해 서버의 API 명세가 달라져도 API 타입 설계만 수정하여 사용할 수 있도록 유지보수성을 개선하였습니다.
+
+* 네트워크 비동기 메서드 테스트를 위한 전용 메서드를 도입해보았습니다.
+
+  * DispatchSemaphore를 사용하여 비동기 메서드의 결과를 받을때까지 스레드를 멈춰두는 방식을 사용했습니다.
+  * 테스트 프레임워크에서 제공하는 전용 인스턴스인 XCTestExpextation를 활용해보았습니다.
+
+  ```swift
+  class URLSessionProviderDecodingTests: XCTestCase {
+  
+      var sutURLSesssionProvider: URLSessionProvider!
+      var sutTestExpectation: XCTestExpectation!
+  
+      override func setUpWithError() throws {
+          self.sutURLSesssionProvider = URLSessionProvider(session: URLSession.shared)
+          self.sutTestExpectation = XCTestExpectation()
+      }
+  
+      override func tearDownWithError() throws {
+          self.sutURLSesssionProvider = nil
+          self.sutTestExpectation = nil
+      }
+      
+      func test_showPage가_200번때_상태코드를_반환해야한다() {
+          sutURLSesssionProvider.request(.showProductPage(pageNumber: "1", itemsPerPage: "10")) { (result: Result<ShowProductPageResponse, URLSessionProviderError>) in
+              switch result {
+              case .success(let data):
+                  print(data)
+                  XCTAssertTrue(true)
+                  self.sutTestExpectation.fulfill()
+              case .failure(let error):
+                  XCTFail("\(error)")
+                  self.sutTestExpectation.fulfill()
+              }
+          }
+          wait(for: [sutTestExpectation], timeout: 10.0)
+      }
+  }
+  ```
