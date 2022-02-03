@@ -113,7 +113,7 @@
 
 ---
 
-### 🎼 프로젝트 핵심 고민 사항
+### 🤔 프로젝트 핵심 고민 사항
 
 1. **서로 다른 객체간에 메시지를 주고 받는 방식**
 
@@ -166,29 +166,66 @@
 3. **View를 구현하는 방식에 관한 고민 XIB(NIB) vs Storyboard vs Code**
 
       * 상품 등록 및 수정 화면은 공통 모양의 입력 양식을 사용합니다.
+
       * 스토리보드의 Scene에 View를 구현하면 target-action 패턴에 의해 View가 ViewController에 종속되는 문제점이 있습니다.
+
       * 공통의 View를 재사용할 수 있도록 별도의 모듈(템플릿)로 구현하는 방법을 다음과 같이 생각해보았습니다. 
+
         * StoryBoard를 활용한 View 구현 방법
         * Code를 활용한 View 구현 방법
         * XIB(NIB)를 활용한 View를 구현 방법
+
       * 스토리보드 방법의 역활 및 장단점에 관하여 다음과 같이 생각해보았습니다.
+
         1. 서로 다른 화면간의 전환 맥락과 한 화면 의미를 시각적으로 파악할 수 있습니다.
         2. 실제 앱을 구현하기 전에 간단한 동작을 목업의 형태로 구현해보기에 적합합니다.
         3. ViewController와 View간에 의존성이 높아져서 재사용성이 떨어집니다.
         4. 협업시에 코드나 XIB 보다 병합 충돌 문제가 자주 발생할 수 있습니다.
+
       * Code 방법의 역할 및 장단점에 관하여 다음과 같이 생각해보았습니다.
+
         1. 협업시에 스토리보드 혹은 XIB(XML) 에서 발생할 수 있는 병합 충돌 문제를 해결하기에 유리합니다.
         2. 인터페이스 빌더를 활용해 구현하기 어려운 화면을 코드를 통해 세밀하게 구현할 수 있습니다.
         3. 코드만 보고 화면의 모습이나 전체적인 구성을 파악하기에 어려움이 있습니다.
         4. 복잡한 오토 레이아웃을 구현할 때 늘어나는 코드를 관리하기 어렵습니다.
+
       * XIB 방법의 역할 및 장단점에 관하여 다음과 같이 생각해보았습니다.
+
         1. 작은 단위로 View 를 구현하기에 스토리보드 보다는 병합 충돌 발생가능성이 낮으나 완전히 해결된 것은 아닙니다.
         2. 인터페이스 빌더를 통해 시각적으로 화면의 구성을 파악하고 구현할 수 있습니다.
         3. 코드로 구현하는 것 보다는 복잡한 화면을 구성함에 있어 어려울 수 있다. (자유도가 떨어진다.) 
+
       * 각 3가지 방법의 장점을 추려서 다음의 구조를 프로젝트에 접목해보았습니다.
+
         1. 재사용 가능성이 높은 View는 XIB를 우선적으로 활용하여 모듈화 구현했습니다.
+
         2. 앱 구조에 관하여 다른 개발자와 시각적으로 커뮤니케이션할 수 있도록 화면 전환 및 각 Scene을 스토리보드에 구현했습니다.
+
         3. 모듈화된 View를 스토리보드의 Scene 위에 얹을 때에는 코드를 활용하여 스토리보드에서 발생할 수 있는 병합 충돌 문제를 줄일 수 있도록 구현했습니다.
+
+           
+
+4. **Modern CollectionView가 기존의  delegation 방식과 갖는 구조적 차이점**
+
+      1. Modern Collection View를 접했을 때, delegation 패턴으로 구현하는 Data Source와 구조적 차이가 있어서 코드 사용법 이해에 어려움을 겪었습니다.
+
+      2. WWDC20의 Advanced in diffable data sources 영상에서 diffableDatasource라는 별도의 객체를 통해 CollectionView의 UI 상태와 SnapShot의 데이터 차이를 기반으로 UI를 갱신해주고 있다는 점을 확인하였습니다.
+
+      3. 전통적인 컬렉션 뷰 구현방식은 View가 이벤트를 받으면 datasource delegate 를 통해 데이터를 갱신하는 구조를 갖습니다.
+
+      4. 이번에 새롭게 등장한 diffable Data Source 는 apply 해줄 때 입력 받은 snapshot 데이터의 변동사항을 기준으로 View를 갱신해주고 있어서 데이터의 흐름 방향이 기존과 반대의 구조를 갖는다고 생각하였습니다.
+
+      5. 이런 구조적 차이가 초기 Modern CollectionView에 데이터를 공급하는 코드 패턴을 이해하기 어렵게 만들었다고 생각합니다.
+
+            
+
+5. **Compositional Layout 의 확장성 있는 레이아웃 설계가 불러온 어려움** 
+
+      1. CollectionView 는 cell, delegate, datasource 등등 여러 객체가 협력하여 우리의 눈에 보이는 구조를 갖는다고 이해하고 있습니다. 
+      2. 초심자가 사용하기에 파악해야하는 클래스가 많아서 시작점을 파악하기 어려운 단점을 지녔다고 생각합니다.
+      3. 사용자가 compositional layout 을 통해 item, group, section 에 관하여도 너무나도 자유롭게 설정할 수 있습니다.
+      4. 별도로 제공되는 옵션인 flow 혹은 List layout 을 활용하는 방법도 존재합니다. 
+      5. 애플의 ModernCollectionView 코드 프로젝트를 가이드라인으로 참조하였습니다.
 
 ---
 
@@ -323,3 +360,44 @@
       }
   }
   ```
+
+### [Step 2️⃣] 상품 목록 화면 구현
+
+#### Keyword
+
+- Safe Area을 고려한 오토 레이아웃 구현
+- Collection View의 활용
+- Mordern Collection View 활용
+
+#### 고민 했던 부분
+
+- Modern Collection View 통해 데이터 중심의 UI 데이터 바인딩 방식으로 구현했습니다.
+  - [UICollectionViewDiffableDataSource](https://developer.apple.com/documentation/uikit/uicollectionviewdiffabledatasource)
+    - 재사용 셀을 반환시켜주는 역할을 담당합니다.
+  - [UICollectionViewCellRegistration](https://developer.apple.com/documentation/uikit/uicollectionview/cellregistration)
+    - cell에 담길 데이터를 설정해주는 역할을 담당합니다.
+  - [snapshot](https://developer.apple.com/documentation/uikit/views_and_controls/collection_views/implementing_modern_collection_views)
+    - 컬렉션 뷰에서 보여줄 데이터의 상태를 스냅샷으로 정의할 수 있습니다.
+    - 데이터가 갱신될 때 새로운 스냅샷을 생성하여 데이터 소스에 apply 해주면 컬렉션 뷰가 차이점이 있는 데이터만 변경해줍니다.
+    - 자동으로 예쁜 애니메이션 효과가 적용됩니다.
+- Segmented Control을 활용하여 LIST와 GRID 사이의 레이아웃 전환 구현 방법을 고민하였습니다.
+  - Segmented Control 은 현재 화면에서 보여줘야 할 컬렉션뷰 레이아웃을 표현합니다.
+  - ProductPageViewController은 LIST와 GRID Collection View를 보여줄 수 있습니다.
+  - 각 레이아웃을 갖는 두개의 CollectionView를 교차하여 보여주는 방식을 채택하였습니다.
+  - 메모리를 더 사용하여 처리로 인하여 발생되는 main 스레드 block 현상을 줄이는 전략을 사용하였습니다.
+  - Segmented Control 상태에 따라서 이전 CollectionView를 제거하고 새로운 CollectionView를 보여주는 방식으로 동작합니다.
+- 하단 방향의 스크롤 동작시에 페이지네이션 기능이 동작하도록 구현했습니다.
+  - scrollview의 delegate 메서드중 드래그가 끝났을 때 호출 되는 콜백 메서드를 활용하였습니다.
+  - 컨텐츠 bound의 하단 좌표에 도달하면 모델 객체에게 새로운 데이터를 요청하도록 명령합니다.
+  - 모델이 데이터 갱신 후 viewcontroller에게 알려주면 viewController는 데이터 소스에 수정된 스냅샷을 apply 해서 UI를 갱신합니다.
+- UIRefreshController를 통해 ScrollView 상단 방향 스크롤시에 새로운 데이터를 불러오도록 구현하였습니다.
+  - 각 컬렉션 뷰는 refreshController 인스턴스를 갖고 있습니다.
+  - subView로 refreshController 를 갖고 있기에 아래로 당겼을 때 로딩중임을 나타내는 애니메이션 효과를 확인할 수 있습니다.
+  - target-action 패턴을 통해 refreshController 가 데이터를 갱신하는 메서드를 호출하도록 액션을 등록해주었습니다.
+- UIActivityIndicatorView를 통해 초기 로딩 시 사용자에게 로딩중임을 알림
+  - 애니메이션 효과가 멈추면 자동으로 숨겨지는 기능을 사용하였습니다.
+  - 모델에 전달된 네트워크 요청이 끝나면 stopanmation 메서드가 호출되어 애니메이션이 중단됩니다.
+  - 이후 activityIndicator가 자동으로 숨겨집니다.
+
+---
+
